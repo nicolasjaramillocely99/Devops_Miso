@@ -1,0 +1,351 @@
+{
+	"info": {
+		"name": "Blacklist API - Entrega 1",
+		"description": "Microservicio de lista negra global de emails. Permite agregar emails a la lista negra y consultar si un email esta en ella.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code es 200', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Respuesta contiene status healthy', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql('healthy');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": ["{{base_url}}"],
+					"path": ["health"]
+				},
+				"description": "Verifica que el microservicio esta activo. No requiere autenticacion. Retorna 200."
+			},
+			"response": [
+				{
+					"name": "Health Check - 200 OK",
+					"status": "OK",
+					"code": 200,
+					"header": [
+						{"key": "Content-Type", "value": "application/json"}
+					],
+					"body": "{\n    \"status\": \"healthy\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Agregar email a lista negra",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code es 201', function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test('Respuesta contiene mensaje de confirmacion', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.message).to.include('exitosamente');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"spam@example.com\",\n    \"app_uuid\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"blocked_reason\": \"Envio de spam recurrente\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/blacklists",
+					"host": ["{{base_url}}"],
+					"path": ["blacklists"]
+				},
+				"description": "Agrega un email a la lista negra global de la organizacion.\n\n**Body (JSON):**\n- `email` (string, obligatorio): Email a agregar\n- `app_uuid` (string, obligatorio): UUID de la aplicacion cliente\n- `blocked_reason` (string, opcional, max 255 chars): Motivo del bloqueo\n\n**Codigos de respuesta:**\n- 201: Email agregado exitosamente\n- 400: Datos invalidos o campos faltantes\n- 401: Token de autorizacion faltante o invalido"
+			},
+			"response": [
+				{
+					"name": "Agregado exitosamente - 201",
+					"status": "Created",
+					"code": 201,
+					"header": [
+						{"key": "Content-Type", "value": "application/json"}
+					],
+					"body": "{\n    \"message\": \"Email agregado a la lista negra exitosamente\"\n}"
+				},
+				{
+					"name": "Campos faltantes - 400",
+					"status": "Bad Request",
+					"code": 400,
+					"header": [
+						{"key": "Content-Type", "value": "application/json"}
+					],
+					"body": "{\n    \"message\": \"Datos invalidos\",\n    \"errors\": {\n        \"email\": [\"Missing data for required field.\"]\n    }\n}"
+				},
+				{
+					"name": "Sin token - 401",
+					"status": "Unauthorized",
+					"code": 401,
+					"header": [
+						{"key": "Content-Type", "value": "application/json"}
+					],
+					"body": "{\n    \"message\": \"Token de autorizacion requerido\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Consultar email en lista negra",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code es 200', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Email esta en la lista negra', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.is_blacklisted).to.eql(true);",
+							"});",
+							"",
+							"pm.test('Respuesta contiene blocked_reason', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.blocked_reason).to.be.a('string');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/blacklists/spam@example.com",
+					"host": ["{{base_url}}"],
+					"path": ["blacklists", "spam@example.com"]
+				},
+				"description": "Consulta si un email esta en la lista negra global y el motivo por el que fue agregado.\n\n**Parametro path:**\n- `email`: Email del cliente a consultar\n\n**Codigos de respuesta:**\n- 200: Retorna is_blacklisted (boolean) y blocked_reason (string)\n- 401: Token de autorizacion faltante o invalido"
+			},
+			"response": [
+				{
+					"name": "Email encontrado - 200",
+					"status": "OK",
+					"code": 200,
+					"header": [
+						{"key": "Content-Type", "value": "application/json"}
+					],
+					"body": "{\n    \"is_blacklisted\": true,\n    \"blocked_reason\": \"Envio de spam recurrente\"\n}"
+				},
+				{
+					"name": "Email no encontrado - 200",
+					"status": "OK",
+					"code": 200,
+					"header": [
+						{"key": "Content-Type", "value": "application/json"}
+					],
+					"body": "{\n    \"is_blacklisted\": false,\n    \"blocked_reason\": \"\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Casos negativos",
+			"item": [
+				{
+					"name": "POST sin token - 401",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code es 401 sin token', function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test('Respuesta indica token requerido', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include('Token');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"app_uuid\": \"550e8400-e29b-41d4-a716-446655440000\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/blacklists",
+							"host": ["{{base_url}}"],
+							"path": ["blacklists"]
+						},
+						"description": "Verifica que el endpoint rechaza solicitudes sin token de autorizacion."
+					},
+					"response": [
+						{
+							"name": "Sin token - 401",
+							"status": "Unauthorized",
+							"code": 401,
+							"header": [
+								{"key": "Content-Type", "value": "application/json"}
+							],
+							"body": "{\n    \"message\": \"Token de autorizacion requerido\"\n}"
+						}
+					]
+				},
+				{
+					"name": "POST sin email - 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code es 400 sin email', function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test('Respuesta indica datos invalidos', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include('invalidos');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"app_uuid\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"blocked_reason\": \"Motivo de prueba\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/blacklists",
+							"host": ["{{base_url}}"],
+							"path": ["blacklists"]
+						},
+						"description": "Verifica que el endpoint rechaza solicitudes sin el campo email obligatorio."
+					},
+					"response": [
+						{
+							"name": "Campos faltantes - 400",
+							"status": "Bad Request",
+							"code": 400,
+							"header": [
+								{"key": "Content-Type", "value": "application/json"}
+							],
+							"body": "{\n    \"message\": \"Datos invalidos\",\n    \"errors\": {\n        \"email\": [\"Missing data for required field.\"]\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "GET email no existente - 200",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code es 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Email no esta en la lista negra', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.is_blacklisted).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/blacklists/noexiste@example.com",
+							"host": ["{{base_url}}"],
+							"path": ["blacklists", "noexiste@example.com"]
+						},
+						"description": "Verifica que consultar un email que no esta en la lista negra retorna is_blacklisted=false."
+					},
+					"response": [
+						{
+							"name": "Email no encontrado - 200",
+							"status": "OK",
+							"code": 200,
+							"header": [
+								{"key": "Content-Type", "value": "application/json"}
+							],
+							"body": "{\n    \"is_blacklisted\": false,\n    \"blocked_reason\": \"\"\n}"
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000"
+		},
+		{
+			"key": "token",
+			"value": "default-dev-token"
+		}
+	]
+}
