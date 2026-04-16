@@ -88,7 +88,7 @@ pip install -r requirements.txt
 python application.py
 ```
 
-La app estara disponible en `http://localhost:5000`.
+La app estara disponible en `http://localhost:8000`.
 
 ## Endpoints del API
 
@@ -135,16 +135,16 @@ La app estara disponible en `http://localhost:5000`.
 
 ## Como Correr Tests Unitarios
 
+Desde la raiz del proyecto, con el ambiente virtual activado:
+
 ```bash
-source venv/Scripts/activate
-python -m pytest tests/ -v
+pytest -v
 ```
 
-Hay 4 tests:
-1. POST email exitoso (201)
-2. POST + GET verifica que el email quedo en la lista negra
-3. POST sin token (401)
-4. POST sin campo email (400)
+Hay 3 tests (uno por endpoint) que usan mocks con `unittest.mock`, por lo que NO requieren PostgreSQL corriendo:
+1. `test_health_endpoint_returns_ok` - GET /health
+2. `test_post_blacklist_creates_entry` - POST /blacklists
+3. `test_get_blacklist_returns_status` - GET /blacklists/<email>
 
 ## Como Usar Postman
 
@@ -160,7 +160,7 @@ La coleccion trae variables predefinidas, pero si usas un **Environment** en Pos
 
 | Variable | Valor |
 |----------|-------|
-| `base_url` | `http://localhost:5000` |
+| `base_url` | `http://localhost:8000` |
 | `token` | `default-dev-token` |
 
 ### Correr la coleccion

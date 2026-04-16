@@ -15,7 +15,5 @@ class Config:
 
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL_TEST", "postgresql://postgres:postgres@localhost:5433/blacklist_test_db"
-    )
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     STATIC_TOKEN = "test-static-token"
