@@ -18,6 +18,7 @@ phases:
     commands:
       - echo "Ejecutando pruebas unitarias..."
       - python -m pytest tests/ -v --tb=short
+      - echo "Pruebas completadas. Creando directorio dist para artefacto desplegable..."
       - mkdir -p dist
       - cp -R .ebextensions/ dist/
       - cp -R app/ dist/
@@ -25,7 +26,6 @@ phases:
       - cp .ebignore dist/
       - cp Procfile dist/
       - cp requirements.txt dist/
-      - echo "Pruebas completadas. Creando directorio dist para artefacto desplegable..."
       - echo "Directorio dist creado."
 
 artifacts:
