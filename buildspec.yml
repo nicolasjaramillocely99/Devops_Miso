@@ -18,11 +18,19 @@ phases:
     commands:
       - echo "Ejecutando pruebas unitarias..."
       - python -m pytest tests/ -v --tb=short
-      - echo "Pruebas completadas. Creando ZIP del artefacto desplegable..."
-      - zip -r blacklist-api-artifact.zip . -x "*.git*" ".venv/*" ".pytest_cache/*" "__pycache__/*" "*/__pycache__/*" "tests/*" ".ebignore" ".gitignore" "postman/*" ".env*" "docker-compose.yml" "blacklist-api-artifact.zip"
-      - echo "Artefacto creado blacklist-api-artifact.zip"
+      - mkdir -p dist
+      - cp -R .ebextensions/ dist/
+      - cp -R app/ dist/
+      - cp application.py dist/
+      - cp .ebignore dist/
+      - cp Procfile dist/
+      - cp requirements.txt dist/
+      - echo "Pruebas completadas. Creando directorio dist para artefacto desplegable..."
+      - echo "Directorio dist creado."
 
 artifacts:
   files:
-    - blacklist-api-artifact.zip
+    - '**/*'
+  base-directory: 'dist'
   discard-paths: no
+  packaging: zip
