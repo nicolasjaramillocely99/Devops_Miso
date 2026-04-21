@@ -1,14 +1,8 @@
-"""
-Pruebas unitarias - una por cada endpoint de la API del microservicio Blacklist.
-
-Stack: pytest + unittest.mock (biblioteca estandar de Python).
-No requieren motor de BD real: las operaciones de SQLAlchemy se mockean.
-"""
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 
 def test_health_endpoint_returns_ok(client):
-    """GET /health -> 200 con payload de estado."""
+    # Prueba positiva: el endpoint de salud responde correctamente sin token.
     response = client.get("/health")
 
     assert response.status_code == 200
@@ -17,7 +11,7 @@ def test_health_endpoint_returns_ok(client):
 
 @patch("app.resources.blacklist.db.session")
 def test_post_blacklist_creates_entry(mock_session, client, auth_headers):
-    """POST /blacklists -> 201 e invoca db.session.add y db.session.commit una vez."""
+    # Prueba positiva: crea un registro en blacklist con token y datos validos.
     payload = {
         "email": "user@test.com",
         "app_uuid": "11111111-1111-1111-1111-111111111111",
@@ -35,16 +29,40 @@ def test_post_blacklist_creates_entry(mock_session, client, auth_headers):
 
 
 @patch("app.resources.blacklist.BlacklistEntry")
-def test_get_blacklist_returns_status(mock_entry, client, auth_headers):
-    """GET /blacklists/<email> -> 200 con is_blacklisted=True cuando el registro existe."""
+def test_get_blacklist_returns_true_when_email_exists(mock_entry, client, auth_headers):
+    # Prueba positiva: consulta un email existente en la blacklist.
     fake_entry = MagicMock(blocked_reason="spam")
     mock_entry.query.filter_by.return_value.first.return_value = fake_entry
 
     response = client.get("/blacklists/user@test.com", headers=auth_headers)
 
     assert response.status_code == 200
-    assert response.get_json() == {
-        "is_blacklisted": True,
-        "blocked_reason": "spam",
-    }
+    assert response.get_json() == {"is_blacklisted": True, "blocked_reason": "spam"}
     mock_entry.query.filter_by.assert_called_once_with(email="user@test.com")
+
+
+@patch("app.resources.blacklist.BlacklistEntry")
+def test_get_blacklist_returns_false_when_email_does_not_exist(
+    mock_entry, client, auth_headers
+):
+    # Prueba positiva: consulta un email valido que no esta en la blacklist.
+    mock_entry.query.filter_by.return_value.first.return_value = None
+
+    response = client.get("/blacklists/missing@test.com", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.get_json() == {"is_blacklisted": False, "blocked_reason": ""}
+    mock_entry.query.filter_by.assert_called_once_with(email="missing@test.com")
+
+
+def test_post_blacklist_requires_auth(client):
+    # Prueba negativa: rechaza la creacion cuando no se envia token.
+    payload = {
+        "email": "user@test.com",
+        "app_uuid": "11111111-1111-1111-1111-111111111111",
+    }
+
+    response = client.post("/blacklists", json=payload)
+
+    assert response.status_code == 401
+    assert "Token de autorizacion requerido" in response.get_json()["message"]
