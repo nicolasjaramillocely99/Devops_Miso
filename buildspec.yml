@@ -7,6 +7,9 @@ phases:
     commands:
       - echo "Instalando dependencias..."
       - pip install -r requirements.txt
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 538067617330.dkr.ecr.us-east-1.amazonaws.com
+
 
   pre_build:
     commands:
@@ -16,6 +19,9 @@ phases:
 
   build:
     commands:
+      - echo Building the Docker image...          
+      - docker build -t python-app .
+      - docker tag python-app:latest 538067617330.dkr.ecr.us-east-1.amazonaws.com/python-app:latest
       - echo "Ejecutando pruebas unitarias..."
       - python -m pytest tests/ -v --tb=short
       - echo "Pruebas completadas. Creando directorio dist para artefacto desplegable..."
@@ -28,9 +34,31 @@ phases:
       - cp requirements.txt dist/
       - echo "Directorio dist creado."
 
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push 538067617330.dkr.ecr.us-east-1.amazonaws.com/python-app:latest
+      - echo Writing Image Definitions file...
+      - printf '[{"name":"Container-app-python","imageUri":"538067617330.dkr.ecr.us-east-1.amazonaws.com/python-app:latest"}]' > imagedefinitions.json
+      - printf '{"ImageURI":"538067617330.dkr.ecr.us-east-1.amazonaws.com/python-app:latest"}' > imageDetail.json
+      - cat imagedefinitions.json 
+
+
 artifacts:
   files:
     - '**/*'
+    - imagedefinitions.json
+    - imageDetail.json
   base-directory: 'dist'
   discard-paths: no
+  secondary-artifacts:
+    DefinitionArtifact:
+      files:
+        - appspec.yaml
+        - taskdef.json
+    ImageArtifact:
+      files:
+        - imageDetail.json
+
   packaging: zip
