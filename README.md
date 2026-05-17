@@ -12,6 +12,8 @@ Microservicio para gestionar la lista negra global de emails de la organizacion.
 - Flask-JWT-Extended 4.6.0
 - PostgreSQL 15 (via Docker)
 - pytest 7.4.0
+- New Relic Python Agent
+- AWS Fargate / ECR / CodeBuild
 
 > **Nota sobre versiones:** El spec original indica Flask 1.1.x, pero esta version es incompatible con Python 3.12+ debido a dependencias obsoletas en Jinja2, itsdangerous y Werkzeug. Se actualizo a Flask 2.3.3 con Werkzeug 2.3.8, que mantiene la misma API y comportamiento. Igualmente, psycopg2-binary se actualizo a 2.9.11 porque la version 2.9.6 no tiene wheels preconstruidos para Python 3.13 en Windows. En AWS Beanstalk (Python 3.9-3.11) estas versiones deberian funcionar sin problema segun la documentacion de AWS.
 
@@ -22,7 +24,9 @@ Entrega_1/
 ├── application.py                 # Entry point (Beanstalk busca la variable `application`)
 ├── docker-compose.yml             # PostgreSQL en Docker (puerto 5433)
 ├── requirements.txt               # Dependencias Python
-├── Procfile                       # Comando de inicio para Beanstalk (gunicorn)
+├── Dockerfile                     # Imagen del API para AWS Fargate
+├── Procfile                       # Comando web instrumentado con New Relic
+├── buildspec.yml                  # CI: tests, build Docker, push ECR
 ├── .env.example                   # Plantilla de variables de entorno
 ├── .gitignore
 ├── app/
@@ -39,8 +43,8 @@ Entrega_1/
 │   └── test_blacklist.py          # 4 tests: 2 positivos + 2 negativos
 ├── postman/
 │   └── Blacklist_API.postman_collection.json  # Coleccion de Postman importable
-└── .ebextensions/
-    └── 01_flask.config            # Config WSGI para Beanstalk
+└── docs/
+    └── analisis-new-relic.md      # Analisis de monitoreo continuo
 ```
 
 ## Prerequisitos
@@ -146,6 +150,41 @@ Hay 3 tests (uno por endpoint) que usan mocks con `unittest.mock`, por lo que NO
 2. `test_post_blacklist_creates_entry` - POST /blacklists
 3. `test_get_blacklist_returns_status` - GET /blacklists/<email>
 
+## Despliegue en AWS Fargate
+
+La entrega para Fargate usa imagen Docker. El `buildspec.yml` espera estas
+variables en CodeBuild:
+
+```bash
+ECR_REPOSITORY_URI=<account>.dkr.ecr.<region>.amazonaws.com/<repository>
+ECS_CONTAINER_NAME=blacklist-api
+```
+
+CodeBuild debe tener modo privilegiado para construir y publicar imagenes Docker.
+El build genera `imagedefinitions.json` e `imageDetail.json` para que
+CodePipeline/CodeDeploy actualicen la task de ECS.
+
+## Monitoreo New Relic
+
+El contenedor de la API arranca con:
+
+```bash
+newrelic-admin run-program gunicorn --bind 0.0.0.0:8000 --workers 3 --threads 2 application:application
+```
+
+Variables requeridas en la task de Fargate:
+
+```bash
+NEW_RELIC_LICENSE_KEY=<secret>
+NEW_RELIC_APP_NAME=blacklist-api
+NEW_RELIC_LOG=stdout
+```
+
+Para metricas de ECS/Fargate, la task definition puede incluir el sidecar de New
+Relic Infrastructure y la cuenta AWS puede conectarse a New Relic mediante
+CloudWatch Metric Streams. El analisis completo esta en
+`docs/analisis-new-relic.md`.
+
 ## Como Usar Postman
 
 ### Importar la coleccion
@@ -173,5 +212,4 @@ La coleccion incluye:
 - Requests para los 3 endpoints con ejemplos de respuesta
 - Carpeta "Casos negativos" (sin token, sin email, email no existente)
 - Scripts de test (`pm.test`) que validan status codes y respuestas
-
 

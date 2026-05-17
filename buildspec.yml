@@ -10,27 +10,34 @@ phases:
 
   pre_build:
     commands:
-      - echo "Verificando entorno..."
-      - python --version
-      - pip --version
+      - echo "Validando variables de CodeBuild..."
+      - test -n "$ECR_REPOSITORY_URI"
+      - REPOSITORY_REGISTRY=$(echo "$ECR_REPOSITORY_URI" | cut -d/ -f1)
+      - COMMIT_HASH=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:-latest}
+      - CONTAINER_NAME=${ECS_CONTAINER_NAME:-blacklist-api}
+      - echo "Autenticando Docker contra ECR..."
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REPOSITORY_REGISTRY"
 
   build:
     commands:
       - echo "Ejecutando pruebas unitarias..."
       - python -m pytest tests/ -v --tb=short
-      - echo "Pruebas completadas. Creando directorio dist para artefacto desplegable..."
-      - mkdir -p dist
-      - cp -R .ebextensions/ dist/
-      - cp -R app/ dist/
-      - cp application.py dist/
-      - cp .ebignore dist/
-      - cp Procfile dist/
-      - cp requirements.txt dist/
-      - echo "Directorio dist creado."
+      - echo "Construyendo imagen Docker..."
+      - docker build -t "$ECR_REPOSITORY_URI:$IMAGE_TAG" .
+      - docker tag "$ECR_REPOSITORY_URI:$IMAGE_TAG" "$ECR_REPOSITORY_URI:latest"
+
+  post_build:
+    commands:
+      - echo "Publicando imagen en ECR..."
+      - docker push "$ECR_REPOSITORY_URI:$IMAGE_TAG"
+      - docker push "$ECR_REPOSITORY_URI:latest"
+      - IMAGE_URI="$ECR_REPOSITORY_URI:$IMAGE_TAG"
+      - printf '[{"name":"%s","imageUri":"%s"}]' "$CONTAINER_NAME" "$IMAGE_URI" > imagedefinitions.json
+      - printf '{"ImageURI":"%s"}' "$IMAGE_URI" > imageDetail.json
+      - 'echo "Imagen publicada: $IMAGE_URI"'
 
 artifacts:
   files:
-    - '**/*'
-  base-directory: 'dist'
-  discard-paths: no
-  packaging: zip
+    - imagedefinitions.json
+    - imageDetail.json
