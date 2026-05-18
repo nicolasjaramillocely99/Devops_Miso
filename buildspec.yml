@@ -7,6 +7,9 @@ phases:
     commands:
       - echo "Instalando dependencias..."
       - pip install -r requirements.txt
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 538067617330.dkr.ecr.us-east-1.amazonaws.com
+
 
   pre_build:
     commands:
@@ -21,6 +24,9 @@ phases:
 
   build:
     commands:
+      - echo Building the Docker image...          
+      - docker build -t python-app .
+      - docker tag python-app:latest 538067617330.dkr.ecr.us-east-1.amazonaws.com/python-app:latest
       - echo "Ejecutando pruebas unitarias..."
       - python -m pytest tests/ -v --tb=short
       - echo "Construyendo imagen Docker..."
@@ -36,6 +42,17 @@ phases:
       - printf '[{"name":"%s","imageUri":"%s"}]' "$CONTAINER_NAME" "$IMAGE_URI" > imagedefinitions.json
       - printf '{"ImageURI":"%s"}' "$IMAGE_URI" > imageDetail.json
       - 'echo "Imagen publicada: $IMAGE_URI"'
+
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push 538067617330.dkr.ecr.us-east-1.amazonaws.com/python-app:latest
+      - echo Writing Image Definitions file...
+      - printf '[{"name":"Container-app-python","imageUri":"538067617330.dkr.ecr.us-east-1.amazonaws.com/python-app:latest"}]' > imagedefinitions.json
+      - printf '{"ImageURI":"538067617330.dkr.ecr.us-east-1.amazonaws.com/python-app:latest"}' > imageDetail.json
+      - cat imagedefinitions.json 
+
 
 artifacts:
   files:
