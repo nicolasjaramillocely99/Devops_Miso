@@ -1,4 +1,5 @@
-FROM python:3.13-slim
+# ECR Public mirror del Python oficial — evita rate limit de Docker Hub en CodeBuild
+FROM public.ecr.aws/docker/library/python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
