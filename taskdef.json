@@ -1,0 +1,41 @@
+{
+  "family": "task-app-python",
+  "executionRoleArn": "arn:aws:iam::366451245438:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "containerDefinitions": [
+    {
+      "name": "python-app",
+      "image": "<IMAGE1_NAME>",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "DATABASE_URL", "value": "postgresql://postgres:BlacklistNicolas2026!@blacklist-db-nicolas.c0xyiqok2mw1.us-east-1.rds.amazonaws.com:5432/blacklist_db" },
+        { "name": "STATIC_TOKEN", "value": "mi-token-secreto-estatico" },
+        { "name": "JWT_SECRET_KEY", "value": "mi-jwt-secret-key" },
+        { "name": "NEW_RELIC_LICENSE_KEY", "value": "77275a99612b9ef6a86aa89dd04674f7482cNRAL" },
+        { "name": "NEW_RELIC_APP_NAME", "value": "blacklist-api (nicolas-prod)" },
+        { "name": "NEW_RELIC_LOG", "value": "stdout" },
+        { "name": "NEW_RELIC_DISTRIBUTED_TRACING_ENABLED", "value": "true" },
+        { "name": "NEW_RELIC_ENVIRONMENT", "value": "production" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/blacklist-app",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs",
+          "awslogs-create-group": "true"
+        }
+      }
+    }
+  ]
+}
